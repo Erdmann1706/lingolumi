@@ -1,43 +1,40 @@
-LingoLumi 4.1 – Verbesserte englische Sprachausgabe
+LingoLumi 4.2 – gründlich geprüftes Stabilitäts-Update
 
-Update der GitHub-Pages-App mit privatem Schulbuchwortschatz
+Kostenloses GitHub-Pages-Paket, ohne private Wortliste.
 
-Schulbuch: Lighthouse General Edition Band 1, ISBN 978-3-06-034547-2.
-Zwei Ausgaben: Ein öffentliches App-Paket ohne Schulbuchdaten und eine
-PRIVATE JSON-Datei mit 715 aus den eigenen Scans erfassten Lernkarten.
+WICHTIG VOR DEM UPDATE:
+1. Auf dem iPhone LingoLumi > Mehr > Lernstand sichern.
+   ACHTUNG: Die bisherige Version 4.1 sichert nur den Fortschritt.
+   Die separate private Schulbuch-Wortliste deshalb ebenfalls behalten!
+2. Beide Dateien PRIVAT aufbewahren (nicht bei GitHub hochladen).
+3. Die hier enthaltenen App-Dateien entpacken und wie bisher in dein
+   GitHub-Projekt lingolumi hochladen. Gleiche Dateinamen ersetzen.
+4. Die installierte iPhone-App NICHT löschen und keine Safari-Website-Daten löschen.
+5. LingoLumi mit Internetverbindung öffnen, ggf. schließen und neu öffnen.
+6. Unter Mehr sollte unten "App-Version 4.2" stehen.
+7. Nach dem Update erneut "Lernstand sichern" ausführen: Die neue
+   Sicherung enthält nun Fortschritt und private Buchliste zusammen.
 
-WICHTIG: Die JSON-Wortliste NICHT bei GitHub hochladen! Das Repository ist PUBLIC.
+Verbesserungen gegenüber 4.1:
+- Karen (en-AU) als bevorzugte Stimme, Daniel (en-GB) als Alternative.
+  Nicht geeignete Effektstimmen werden nicht mehr angeboten.
+- Empfohlenes Sprechtempo 0,9; langsame Wiederholung bleibt.
+- Besserer Offline-Cache und automatische Aktualisierung bei neuer Version.
+- Lernstand-Sicherung enthält jetzt AUCH die private Schulbuch-Wortliste,
+  sofern diese auf dem iPhone importiert ist. Die Datei ist deshalb PRIVAT.
+- Wiederherstellung auch älterer Sicherungen bleibt unterstützt.
+- Wort-Fortschritte gehen nicht verloren, falls die private Liste zeitweilig
+  fehlt oder eine ältere Sicherung wiederhergestellt wird.
+- Bessere Auswahl der falschen Antworten und mehr Buchvokabeln pro Runde.
 
-UPDATE IN 2 SCHRITTEN:
-1. Im bereits installierten LingoLumi unter Mehr > Lernstand sichern sichern.
-   GitHub: Diese 10 Dateien aus der öffentlichen ZIP in den Hauptordner des
-   Repositories lingolumi hochladen, vorhandene Dateien ersetzen; Commit.
-2. App auf dem iPhone einmal online öffnen und nach dem Neustart unter
-   Mehr > Schulbuch-Wortliste die SEPARATE PRIVATE JSON-Datei auswählen.
-   Diese einmalig über AirDrop oder Dateien auf das iPhone übertragen.
-   Sobald importiert, bleibt die Wortliste lokal und die App funktioniert offline.
+Sicherheit und Grenzen:
+- Das GitHub-Paket enthält keine privaten Schulbuchvokabeln.
+- Keine App-Serverkosten, kein Nutzerkonto, kein Tracking, keine Cloud-KI.
+- Der Lernstand liegt unverschlüsselt im lokalen Web-App-Speicher.
+- Automatische Aussprachebewertung und freies KI-Gespräch sind NICHT enthalten.
+- Die 715 vorab privat erfassten Wortkarten wurden nicht sämtlich fachlich
+  gegen das Buch geprüft. Im Zweifel gilt die Lehrbuchseite.
+- Tatsächliche iOS-Sprachausgabe und Installation müssen am iPhone getestet werden.
 
-Die Home-Bildschirm-App NICHT löschen. Nach dem GitHub-Update ggf. zweimal
-neu starten. Lernfortschritt bleibt grundsätzlich erhalten. Bei einem Problem
-unter Mehr > Sicherung wiederherstellen.
-
-Inhalte: 715 aus den Seiten 214–253 manuell abgeleitete Lernkarten mit
-vereinfachten Bedeutungen und Buchseiten, 48 originale neue Grammatikaufgaben
-und 12 selbstverfasste Lesetexte. Hinzu kommen die früheren Lernkarten
-als Zusatztraining. Die Wortlisten sind didaktisch vereinfacht und nicht
-vollständig mit dem Druckwerk gegengelesen; bei Abweichungen gilt das Buch.
-
-Kosten: 0 EUR. Keine Werbung, kein Konto, kein KI-Server.
-Keine offizielle Cornelsen-App. Apple Intelligence benötigt ein neueres iPhone.
-
-NEU: Unter „Mehr“ -> „Englische Stimme“ lassen sich bei Verfügbarkeit
-eine englische iPhone-Stimme und vier Sprechgeschwindigkeiten wählen.
-Die App bevorzugt sonst eine lokal vorhandene englisch-britische Stimme.
-In Vokabelübungen gibt es „Langsam anhören“.
-
-ACHTUNG: Die Stimmen, die iOS Safari/Web-Apps bereitstellt, können von
-den in den Systemeinstellungen installierten Stimmen abweichen. Keine
-Garantie auf Siri/Apple-Intelligence-Stimmen oder perfekte Natürlichkeit.
-
-Die 715 privaten Buchkarten gehören weiterhin NICHT nach GitHub.
-Beim Update bleiben App-Speicher und gelernte Wörter unverändert.
+Für neue Installation: zuerst App auf GitHub Pages veröffentlichen, danach die
+separat vorhandene private Buchwortliste einmalig auf dem iPhone importieren.

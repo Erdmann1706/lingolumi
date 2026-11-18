@@ -10,3 +10,8 @@ main{flex:1;padding:6px 20px 30px;min-width:0}.eyebrow{font-size:12px;color:var(
 
 /* Stimme: gut bedienbare Auswahl auf dem iPhone 12 mini */
 .field-label{display:block;font-size:14px;font-weight:800;margin:16px 0 6px}.voice-select{display:block;width:100%;min-height:50px;border:2px solid #dcd2f2;border-radius:14px;background:#fff;color:var(--ink);padding:10px 12px;font:inherit;font-size:16px}.voice-select:focus{border-color:var(--purple);outline:2px solid #bcb0ea}.voice-select:disabled{opacity:.5}
+
+/* Komfort und kleine Bildschirme */
+button:focus-visible,select:focus-visible{outline:3px solid #a48bef;outline-offset:2px}
+button,.btn,.answer{ -webkit-tap-highlight-color:transparent }
+@media(max-width:370px){.topicgrid{grid-template-columns:1fr 1fr}.topic{padding:11px;min-height:100px}.topic b{font-size:13px}}
