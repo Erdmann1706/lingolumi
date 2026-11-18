@@ -1,27 +1,29 @@
-LingoLumi 3.0 – Lighthouse-orientierter Lerntrainer
+LingoLumi 4.0 – privater Schulbuchwortschatz, öffentliche Gratis-App
 
-Lehrwerk: Cornelsen Lighthouse General Edition, Band 1, 5. Schuljahr, ISBN 978-3-06-034547-2.
-Keine offizielle Cornelsen-App, keine vollständige digitale Ausgabe des Buchs.
-Alle Vokabelbeispiele, Grammatikaufgaben und Lesetexte wurden eigenständig für die App verfasst.
-Die thematische Zuordnung basiert auf öffentlich zugänglichen Stoffübersichten, nicht auf einer vollständigen geprüften Buchabschrift.
+Schulbuch: Lighthouse General Edition Band 1, ISBN 978-3-06-034547-2.
+Zwei Ausgaben: Ein öffentliches App-Paket ohne Schulbuchdaten und eine
+PRIVATE JSON-Datei mit 715 aus den eigenen Scans erfassten Lernkarten.
 
-Inhalt:
-- Sechs Lernabschnitte (Hello! und Units 1–5), frei auswählbar
-- 168 neue Wörter und kurze selbstverfasste Beispielsätze
-- 48 eigene Grammatikübungen
-- 12 eigene kurze Lesetexte mit Verständnisfragen
-- bisherige 60 Zusatzwörter und bestehender Lernstand bleiben erhalten
-- adaptive Wiederholung, iOS-Sprachausgabe, lokale Speicherung, Datenexport
-- vollständig lokal/ohne Internet nach erfolgreicher Installation und Erstladung
+WICHTIG: Die JSON-Wortliste NICHT bei GitHub hochladen! Das Repository ist PUBLIC.
 
-AKTUALISIEREN AUF GITHUB PAGES:
-1. GitHub öffnen, Repository lingolumi.
-2. Code > Add file > Upload files. Diese entpackten einzelnen Dateien hochladen, nicht ZIP.
-3. Alte Dateien gleichen Namens ersetzen und neue course.js hinzufügen.
-4. Commit changes. Die Datei index.html muss im Repository-Stammverzeichnis liegen.
-5. Die GitHub-Pages-Seite einmal online öffnen. Die Home-Bildschirm-App danach vollständig schließen und neu starten.
-6. Bestehende App NICHT löschen und keine Website-Daten löschen, sonst kann der lokale Lernstand verloren gehen.
-7. Bei Update-Problemen in der App mehrfach online öffnen; ggf. iOS PWA beenden und neu starten.
-8. Lernstand unter Mehr > Lernstand sichern regelmäßig exportieren.
+UPDATE IN 2 SCHRITTEN:
+1. Im bereits installierten LingoLumi unter Mehr > Lernstand sichern sichern.
+   GitHub: Diese 10 Dateien aus der öffentlichen ZIP in den Hauptordner des
+   Repositories lingolumi hochladen, vorhandene Dateien ersetzen; Commit.
+2. App auf dem iPhone einmal online öffnen und nach dem Neustart unter
+   Mehr > Schulbuch-Wortliste die SEPARATE PRIVATE JSON-Datei auswählen.
+   Diese einmalig über AirDrop oder Dateien auf das iPhone übertragen.
+   Sobald importiert, bleibt die Wortliste lokal und die App funktioniert offline.
 
-Hinweis: Auf dem iPhone 12 mini läuft Apple Intelligence nicht. Die App nutzt eine lokale Lernlogik und die normale iOS-Sprachausgabe. Kein freier Chat, keine Cloud-KI, keine laufenden Kosten.
+Die Home-Bildschirm-App NICHT löschen. Nach dem GitHub-Update ggf. zweimal
+neu starten. Lernfortschritt bleibt grundsätzlich erhalten. Bei einem Problem
+unter Mehr > Sicherung wiederherstellen.
+
+Inhalte: 715 aus den Seiten 214–253 manuell abgeleitete Lernkarten mit
+vereinfachten Bedeutungen und Buchseiten, 48 originale neue Grammatikaufgaben
+und 12 selbstverfasste Lesetexte. Hinzu kommen die früheren Lernkarten
+als Zusatztraining. Die Wortlisten sind didaktisch vereinfacht und nicht
+vollständig mit dem Druckwerk gegengelesen; bei Abweichungen gilt das Buch.
+
+Kosten: 0 EUR. Keine Werbung, kein Konto, kein KI-Server.
+Keine offizielle Cornelsen-App. Apple Intelligence benötigt ein neueres iPhone.

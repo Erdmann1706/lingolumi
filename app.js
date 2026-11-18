@@ -9,10 +9,11 @@ const LEGACY_WORDS=[
 ['adventure','Abenteuer','Abenteuer','We go on an adventure.','Wir erleben ein Abenteuer.'],['forest','Wald','Abenteuer','The forest is quiet.','Der Wald ist ruhig.'],['treasure','Schatz','Abenteuer','We found the treasure.','Wir haben den Schatz gefunden.'],['mystery','Geheimnis','Abenteuer','This is a mystery.','Das ist ein Geheimnis.'],['explore','erkunden','Abenteuer','Let us explore the island.','Lass uns die Insel erkunden.'],['journey','Reise','Abenteuer','Our journey begins today.','Unsere Reise beginnt heute.'],['discover','entdecken','Abenteuer','I want to discover new things.','Ich möchte neue Dinge entdecken.'],['mountain','Berg','Abenteuer','The mountain is high.','Der Berg ist hoch.'],['secret','Geheimnis','Abenteuer','I have a secret.','Ich habe ein Geheimnis.'],['courage','Mut','Abenteuer','Courage helps you try.','Mut hilft dir, etwas zu versuchen.']
 ].map((w,i)=>({id:i,en:w[0],de:w[1],topic:w[2],sentence:w[3],translation:w[4]}));
 // Alte 60 Wörter und ihre gespeicherten IDs bleiben erhalten.
-const WORDS=[...LEGACY_WORDS.map(w=>({...w,topic:'Zusatztraining'})),...COURSE_WORDS];
+// Bisherige Lernkarten werden nicht gelöscht; sie bleiben als Zusatztraining nutzbar.
+const WORDS=[...LEGACY_WORDS.map(w=>({...w,topic:'Zusatztraining'})),...COURSE_WORDS.map(w=>({...w,topic:'Zusatztraining'})),...BOOK_WORDS];
 const TOPICS=[...UNITS.map(([code,emoji])=>[code,emoji]),['Zusatztraining','⭐']];
 const courseTopicLabel=topic=>{const u=UNITS.find(u=>u[0]===topic);return u?`${u[0]} · ${u[2]}`:topic==='Zusatztraining'?'Freies Zusatztraining':'Alle Units'};
-const topicWords=topic=>WORDS.filter(w=>topic==='Zusatztraining'?w.topic==='Zusatztraining':w.topic!=='Zusatztraining'&&(topic==='Alle'||w.topic===topic));
+const topicWords=topic=>topic==='Zusatztraining'?WORDS.filter(w=>w.topic==='Zusatztraining'):(BOOK_WORDS.length?BOOK_WORDS:COURSE_WORDS).filter(w=>topic==='Alle'||w.topic===topic);
 const topicActivities=topic=>topic==='Zusatztraining'?[]:COURSE_ACTIVITIES.filter(a=>topic==='Alle'||a.topic===topic);
 const STORAGE_KEY='lingolumi-v1'; // Liest auch den Lernstand der ersten Version.
 const app=document.getElementById('app');
@@ -21,7 +22,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
 const localDate=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const plusDays=(days)=>{let d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+days);return localDate(d)};
-const fresh=()=>({name:'',sound:true,topic:'Hello!',courseVersion:3,items:{},activities:{},history:[],sessions:0,created:localDate()});
+const fresh=()=>({name:'',sound:true,topic:'Hello!',courseVersion:4,items:{},activities:{},history:[],sessions:0,created:localDate()});
 const validDate=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)?x:'';
 const validTopic=x=>x==='Alle'||TOPICS.some(t=>t[0]===x)?x:'Hello!';
 const cleanNumber=(x,min,max)=>Number.isFinite(x)?clamp(Math.floor(x),min,max):min;
@@ -30,7 +31,7 @@ function normalize(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return result;
   result.name=typeof raw.name==='string'?raw.name.slice(0,22):'';
   result.sound=raw.sound!==false;
-  result.topic=raw.courseVersion===3?validTopic(raw.topic):'Hello!';
+  result.topic=Number(raw.courseVersion)>=3?validTopic(raw.topic):'Hello!';
   result.sessions=cleanNumber(raw.sessions,0,100000);
   result.created=validDate(raw.created)||localDate();
   if(raw.items&&typeof raw.items==='object'&&!Array.isArray(raw.items)){
@@ -39,6 +40,15 @@ function normalize(raw){
       const tries=cleanNumber(p.tries,0,100000),correct=clamp(cleanNumber(p.correct,0,100000),0,tries);
       result.items[w.id]={score:cleanNumber(p.score,0,5),tries,correct,streak:cleanNumber(p.streak,0,100000),due:validDate(p.due),last:validDate(p.last)};
     });
+  }
+  // V3->V4: Fortschritt für Wörter mit identischer Schreibweise in derselben Unit übernehmen.
+  // Die alten Datensätze selbst bleiben unverändert im Zusatztraining erhalten.
+  if(Number(raw.courseVersion)<4 && raw.items && typeof raw.items==='object'){
+    for(const w of BOOK_WORDS){
+      if(result.items[w.id])continue;
+      const old=COURSE_WORDS.find(c=>c.topic===w.topic&&c.en.toLocaleLowerCase('en')===w.en.toLocaleLowerCase('en'));
+      if(old&&result.items[old.id])result.items[w.id]={...result.items[old.id]};
+    }
   }
   if(raw.activities&&typeof raw.activities==='object'&&!Array.isArray(raw.activities)){
     COURSE_ACTIVITIES.forEach(a=>{
@@ -59,7 +69,7 @@ function mastered(w){return item(w).score>=4}
 function isDue(w){const p=item(w);return p.tries>0&&(!p.due||p.due<=localDate())}
 function dueCount(){return topicWords(data.topic).filter(isDue).length+topicActivities(data.topic).filter(a=>{const x=activityItem(a);return x.tries>0&&(!x.due||x.due<=localDate())}).length}
 const percentage=(a,b)=>b?Math.round(a/b*100):0;
-function stats(){const ws=COURSE_WORDS;return {learned:ws.filter(w=>item(w).tries>0).length,mastered:ws.filter(mastered).length,total:ws.length,exercises:COURSE_ACTIVITIES.filter(a=>activityItem(a).tries>0).length}}
+function stats(){const ws=BOOK_WORDS.length?BOOK_WORDS:COURSE_WORDS;return {learned:ws.filter(w=>item(w).tries>0).length,mastered:ws.filter(mastered).length,total:ws.length,exercises:COURSE_ACTIVITIES.filter(a=>activityItem(a).tries>0).length}}
 const audioSupported='speechSynthesis'in window&&'SpeechSynthesisUtterance'in window;
 function speak(text){
   if(!data.sound||!audioSupported)return false;
@@ -83,20 +93,21 @@ function render(){
 }
 function home(){
   const s=stats(),first=!data.sessions,hasDue=dueCount()>0,active=courseTopicLabel(data.topic);
-  return `<section class="hero"><div class="eyebrow">${first?'Willkommen bei LingoLumi':'Schön, dass du da bist!'}</div><h1>${data.name?`Hey ${escapeHtml(data.name)}!`:'Dein Englisch-Abenteuer.'}</h1><p>${first?'Lerne in deinem Tempo mit eigenen Übungen passend zu Lighthouse 1.':'Ein paar Minuten üben reichen. Fehler sind eine Chance zum Lernen.'}</p><div class="mascot" aria-hidden="true">🦊</div></section>
+  return `<section class="hero"><div class="eyebrow">${first?'Willkommen bei LingoLumi':'Schön, dass du da bist!'}</div><h1>${data.name?`Hey ${escapeHtml(data.name)}!`:'Dein Englisch-Abenteuer.'}</h1><p>${first?'Lerne die Wörter aus deinem Lighthouse-Buch Schritt für Schritt.':'Ein paar Minuten üben reichen. Fehler sind eine Chance zum Lernen.'}</p><div class="mascot" aria-hidden="true">🦊</div></section>
     ${!storageOk?storageWarning():''}
-    <div class="book-banner"><b>📘 Lighthouse · Band 1</b><span>5. Klasse · Wortschatz, Grammatik und kurze Lesetexte</span><small>Eigenständige Lernhilfe, keine digitale Buchausgabe</small></div>
+    <div class="book-banner"><b>📘 Lighthouse · Band 1</b><span>5. Klasse · Schulbuchvokabeln von Seite 214–253</span><small>Bedeutungen teils vereinfacht · Eigene Grammatik- und Leseaufgaben</small></div>
+    ${!BOOK_WORDS.length?`<div class="feedback retry"><b>Deine Buch-Wortliste fehlt noch.</b><p>Öffne „Mehr“ und importiere einmalig die private Schulbuch-Datei. Bis dahin laufen die bisherigen Übungen weiter.</p><button class="btn secondary" data-route="settings">Wortliste einrichten</button></div>`:''}
     <div class="card"><div class="eyebrow">Dein Lernabschnitt</div><h2 style="margin:6px 0">${escapeHtml(active)}</h2><div class="muted">${hasDue?'Es gibt Wörter oder Aufgaben zum Wiederholen.':'5 Aufgaben · etwa 3–5 Minuten · kein Zeitdruck'}</div><div style="height:14px"></div><button class="btn" data-action="start">Jetzt üben</button><button class="btn secondary" style="margin-top:10px" data-route="learn">Anderen Abschnitt wählen</button></div>
-    <div class="stats"><div class="stat"><strong>${s.learned}</strong><span>Schulbuchnahe Wörter geübt</span></div><div class="stat"><strong>${s.exercises}</strong><span>Grammatik- & Leseaufgaben entdeckt</span></div></div>
+    <div class="stats"><div class="stat"><strong>${s.learned}</strong><span>${BOOK_WORDS.length?'Buchvokabeln geübt':'Übungswörter geübt'}</span></div><div class="stat"><strong>${s.exercises}</strong><span>Grammatik- & Leseaufgaben entdeckt</span></div></div>
     <h2>Alle Lernabschnitte</h2><div class="topicgrid">${UNITS.map(([code,emoji,title,desc])=>`<button class="topic ${data.topic===code?'selected':''}" data-topic="${code}"><span class="emoji" aria-hidden="true">${emoji}</span><b>${code}: ${escapeHtml(title)}</b><small>${escapeHtml(desc)}</small></button>`).join('')}</div>`;
 }
 function storageWarning(){return `<div class="feedback retry" role="status"><strong>Dein Lernstand wird gerade nicht gespeichert.</strong><p>Bitte prüfe, ob private Browser-Einstellungen oder Speicherbeschränkungen aktiv sind.</p></div>`}
 function learn(){
-  return `<div class="eyebrow">Lighthouse · Band 1</div><h1>Was übst du heute?</h1><p class="muted">Wähle die Unit, die ihr in der Schule gerade behandelt. Später kannst du mehrere Units mischen. Jede Runde enthält Wortschatz sowie eigene Grammatik- und Leseaufgaben.</p>
+  return `<div class="eyebrow">Lighthouse · Band 1</div><h1>Was übst du heute?</h1><p class="muted">Wähle die Unit aus dem Buch. Nach dem Import erscheinen neue Vokabeln innerhalb einer Unit ungefähr in Buchreihenfolge; unsichere Wörter kommen wieder. Jede Runde enthält auch eigene Grammatik- und Leseaufgaben.</p>
     <div class="card"><button class="topic ${data.topic==='Alle'?'selected':''}" style="min-height:75px;width:100%" data-topic="Alle" aria-pressed="${data.topic==='Alle'}"><b>🌈 Alle Units mischen</b><small>Für Wiederholungen nach mehreren Kapiteln</small></button>
     <div class="topicgrid" style="margin-top:10px">${UNITS.map(([code,emoji,title,desc])=>`<button class="topic ${data.topic===code?'selected':''}" data-topic="${code}" aria-pressed="${data.topic===code}"><span class="emoji" aria-hidden="true">${emoji}</span><b>${code}: ${escapeHtml(title)}</b><small>${escapeHtml(desc)}</small></button>`).join('')}</div></div>
     <div class="card"><h3>${escapeHtml(courseTopicLabel(data.topic))}</h3><p class="muted">Fünf Aufgaben in einer Runde. Schwierige Fragen werden häufiger wiederholt, gut gelöste später erneut.</p><button class="btn" data-action="start">Runde starten</button></div>
-    <button class="topic ${data.topic==='Zusatztraining'?'selected':''}" style="width:100%;margin-bottom:10px" data-topic="Zusatztraining"><b>⭐ Bisheriges Zusatztraining</b><small>Die ursprünglichen 60 Wörter bleiben samt Lernstand erhalten.</small></button>`;
+    <button class="topic ${data.topic==='Zusatztraining'?'selected':''}" style="width:100%;margin-bottom:10px" data-topic="Zusatztraining"><b>⭐ Bisheriges Zusatztraining</b><small>Die alten 60 Grundwörter und 168 Übungswörter bleiben mit ihrem Lernstand erhalten.</small></button>`;
 }
 function progress(){
   const s=stats();
@@ -104,7 +115,7 @@ function progress(){
     <div class="card"><div class="row"><h3>Wörter aus den Lernabschnitten</h3><b>${s.learned} / ${s.total}</b></div><div class="meter" role="progressbar" aria-label="Geübte Wörter" aria-valuenow="${s.learned}" aria-valuemin="0" aria-valuemax="${s.total}"><div class="fill" style="width:${percentage(s.learned,s.total)}%"></div></div><p class="muted">Jedes neue Wort zählt. Nur geübte Wörter sind noch nicht automatisch sicher gekonnt.</p></div>
     <div class="stats"><div class="stat"><strong>${s.mastered}</strong><span>Gut geübte Wörter</span></div><div class="stat"><strong>${data.sessions}</strong><span>Abgeschlossene Runden</span></div></div>
     <h2>Fortschritt nach Units</h2>${UNITS.map(([code,emoji,title])=>{let ws=topicWords(code),n=ws.filter(mastered).length,activities=topicActivities(code),a=activities.filter(x=>activityItem(x).tries>0).length;return `<div class="card"><div class="row"><span><b>${emoji} ${code}: ${escapeHtml(title)}</b><span class="muted" style="display:block">${n} von ${ws.length} Wörtern gut geübt · ${a} von ${activities.length} Zusatzaufgaben bearbeitet</span></span><span class="pill">${percentage(n,ws.length)} %</span></div><div class="meter" style="margin-top:12px" role="progressbar" aria-label="${code}" aria-valuenow="${n}" aria-valuemin="0" aria-valuemax="${ws.length}"><div class="fill" style="width:${percentage(n,ws.length)}%"></div></div></div>`}).join('')}
-    <p class="note">„Gut geübt“ bedeutet: wiederholt richtig gelöst. Auch beherrschte Wörter kommen später zurück. Der Lernstand der bisherigen 60 Zusatzwörter bleibt erhalten.</p>`;
+    <p class="note">„Gut geübt“ bedeutet: wiederholt richtig gelöst. Auch beherrschte Wörter kommen später zurück. Der bisherige Lernstand bleibt erhalten. Nach dem Import zeigen die Schulbuchkarten zeigen die vereinfachte Hauptbedeutung; Mehrdeutigkeiten können im Buch genauer erklärt sein.</p>`;
 }
 function settings(){
   return `<div class="eyebrow">Dein Lernbegleiter</div><h1>Meine Einstellungen</h1>
@@ -112,14 +123,17 @@ function settings(){
     <div class="card"><label class="opt"><input id="audio" type="checkbox" ${data.sound?'checked':''} ${!audioSupported?'disabled':''}><span><b>Englisch vorlesen</b><span class="muted" style="display:block">Benutzt die Sprachausgabe des iPhones.</span></span></label><button class="btn tertiary" data-action="test-audio" ${!canListen()?'disabled':''}>Stimme ausprobieren</button><p class="note">${audioSupported?'Falls du nichts hörst, prüfe die Lautstärke. In Hörfragen kannst du jederzeit zur Leseaufgabe wechseln.':'Diese Browserumgebung unterstützt keine Sprachausgabe. Die App bietet dann nur Lese- und Schreibaufgaben.'}</p></div>
     <div class="card"><h3>Datenschutz & Lernstand</h3><p class="muted">Keine Anmeldung, Werbung oder Nachverfolgung. Antworten und Fortschritte bleiben lokal in dieser Web-App.</p><p class="note">Safari und die installierte Home-Bildschirm-App können getrennte Speicher verwenden. Der Lernstand wird nicht automatisch übertragen. Das Löschen der App oder ihrer Daten kann den Lernstand entfernen.</p>${!storageOk?storageWarning():''}
     <button class="btn tertiary" data-action="export">Lernstand sichern</button><label for="import" class="btn secondary file-label">Sicherung wiederherstellen</label><input id="import" type="file" accept=".json,application/json" class="visually-hidden"><p class="note">Eine Sicherung ist eine JSON-Datei. Sie kann später hier wieder eingelesen werden.</p></div>
-    <div class="card"><h3>Für Eltern</h3><p class="muted">168 neue Vokabeln, 48 Grammatikfragen und 12 kurze Lesetexte zu den sechs Abschnitten von Lighthouse 1. Hinzu kommen die bisherigen 60 Zusatzwörter. Alle Aufgaben sind eigenständig verfasst, nicht aus dem Buch übernommen. Kein freier KI-Chat und keine Aussprachebewertung.</p><button class="linkbtn" data-action="reset">Gesamten Lernstand zurücksetzen</button></div>`;
+    <div class="card"><h3>Schulbuch-Wortliste</h3><p class="muted">${BOOK_WORDS.length?`${BOOK_WORDS.length} Wörter aus den fotografierten Buchseiten sind auf diesem iPhone gespeichert.`:'Noch keine private Buch-Wortliste geladen. Bis zum Import nutzt LingoLumi die bisherigen allgemeinen Übungen.'}</p><label for="book-import" class="btn secondary file-label">${BOOK_WORDS.length?'Wortliste erneut importieren':'Private Wortliste importieren'}</label><input id="book-import" type="file" accept=".json,application/json" class="visually-hidden"><p class="note">Die Wortliste bleibt ausschließlich in dieser installierten App. Lade sie nicht in dein öffentliches GitHub-Repository hoch. Bewahre die private JSON-Datei für eine spätere Neuinstallation auf.</p></div>
+    <div class="card"><h3>Für Eltern</h3><p class="muted">Nach privatem Import Vokabelkarten auf Grundlage deiner fotografierten Lighthouse-Wortlisten (Buchseiten 214–253), 48 eigenständig formulierte Grammatikfragen und 12 eigene kurze Lesetexte. Alte Lernkarten und ihr Fortschritt bleiben unter Zusatztraining erhalten. Die deutschen Bedeutungen sind für kurze Übungen teilweise vereinfacht, keine Buchabschrift und keine Aussprachebewertung.</p><button class="linkbtn" data-action="reset">Gesamten Lernstand zurücksetzen</button></div>`;
 }
 // Gemischte, adaptive Auswahl mit kleinen Aufgabenserien. Kein Zugriff auf künftige Units ohne Auswahl.
 function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
 function isTaskDue(task,get){const p=get(task);return p.tries>0&&(!p.due||p.due<=localDate())}
 function pickItems(pool,n,get){
   const due=shuffle(pool.filter(a=>isTaskDue(a,get))).sort((a,b)=>get(a).score-get(b).score);
-  const unseen=shuffle(pool.filter(a=>get(a).tries===0));
+  const neverSeen=pool.filter(a=>get(a).tries===0);
+  // In einer einzelnen Unit zuerst die früheren Buchseiten erschließen statt Zufall aus dem ganzen Kapitel.
+  const unseen=(pool.length&&pool[0].book&&data.topic!=='Alle')?shuffle(neverSeen.slice(0,Math.max(n*3,12))):shuffle(neverSeen);
   const future=shuffle(pool.filter(a=>get(a).tries>0&&!isTaskDue(a,get))).sort((a,b)=>(get(a).due||'').localeCompare(get(b).due||''));
   const out=[];const add=x=>{if(x&&!out.includes(x)&&out.length<n)out.push(x)};
   due.slice(0,Math.ceil(n*.6)).forEach(add);unseen.forEach(add);due.forEach(add);future.forEach(add);
@@ -139,7 +153,7 @@ function start(){
 }
 function makeOptions(word,kind){
   const side=kind==='deToEn'?'en':'de';
-  const other=WORDS.filter(w=>w.id!==word.id&&w.topic===word.topic&&w[side]!==word[side]);
+  const other=WORDS.filter(w=>w.id!==word.id&&w.topic===word.topic&&w[side]!==word[side]&&(kind!=='deToEn'||w.de!==word.de)&&(kind!=='enToDe'||w.en.toLowerCase()!==word.en.toLowerCase()));
   for(let i=other.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[other[i],other[j]]=[other[j],other[i]]}
   const seen=new Set([word[side]]),picked=[word];
   for(const w of other){if(picked.length===4)break;if(!seen.has(w[side])){picked.push(w);seen.add(w[side])}}
@@ -154,9 +168,10 @@ function setupQuestion(){
     session.options=w.choices.map((label,id)=>({id,label}));return;
   }
   const p=item(w);
-  const ambiguous=WORDS.some(o=>o.id!==w.id&&o.de===w.de);
+  const ambiguous=WORDS.some(o=>o.id!==w.id&&o.topic===w.topic&&(o.de===w.de||o.en.toLowerCase()===w.en.toLowerCase()));
+  const writable=/^[A-Za-z]{2,20}$/.test(w.en)&&!w.de.includes(';');
   const r=Math.random();
-  session.kind=(p.score>=2&&p.tries>=2&&!ambiguous&&r<.30)?'spell':(canListen()&&r<.30?'listen':r<.66?'deToEn':'enToDe');
+  session.kind=(p.score>=2&&p.tries>=2&&writable&&!ambiguous&&r<.30)?'spell':(canListen()&&r<.30?'listen':r<.66?'deToEn':'enToDe');
   session.answered=false;session.selectedId=null;session.wasCorrect=false;
   session.options=session.kind==='spell'?[]:makeOptions(w,session.kind);
 }
@@ -168,13 +183,13 @@ function quiz(){
   const questionWord=kind==='listen'?'🎧':kind==='enToDe'?w.en:w.de;
   const showSpeak=canListen()&&(kind==='listen'||kind==='enToDe');
   return `<div class="qtop"><button class="iconbtn" data-action="exit" aria-label="Runde verlassen">✕</button><div class="meter" role="progressbar" aria-label="Rundenfortschritt" aria-valuenow="${session.index+1}" aria-valuemin="0" aria-valuemax="${session.words.length}"><div class="fill" style="width:${session.index/session.words.length*100}%"></div></div><span class="pill">${session.index+1}/${session.words.length}</span></div>
-    <div class="question"><div class="prompt">${prompt}</div><div class="word">${escapeHtml(questionWord)}</div>
+    ${w.book?`<div class="eyebrow">Lighthouse · ${escapeHtml(w.topic)} · Buchseite ${w.page}</div>`:''}<div class="question"><div class="prompt">${prompt}</div><div class="word">${escapeHtml(questionWord)}</div>
     ${showSpeak?`<button class="speak" data-action="speak" aria-label="Englisches Wort anhören">🔊 <span>Wort anhören</span></button>`:''}
     ${kind==='listen'?'<p class="sub">Du kannst es so oft anhören, wie du möchtest.</p><button class="linkbtn" data-action="read-instead">Ich kann nichts hören – lieber lesen</button>':kind==='spell'?'<p class="sub">Schreibe das englische Wort. Groß- und Kleinschreibung ist egal.</p>':''}
     </div>
     ${kind==='spell'?`<div class="card"><label for="spell" class="visually-hidden">Deine englische Antwort</label><input class="textinput spell" id="spell" type="text" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Englisches Wort" ${session.answered?'disabled':''}><button class="btn" style="margin-top:12px" data-action="check" ${session.answered?'disabled':''}>Antwort prüfen</button></div>`:
       `<div class="answers">${session.options.map(o=>`<button class="answer ${session.answered?(o.id===w.id?'correct':o.id===session.selectedId?'wrong':''):''}" data-answer="${o.id}" ${session.answered?'disabled':''}>${escapeHtml(o.label)}</button>`).join('')}</div>`}
-    ${session.answered?`<div class="feedback ${session.wasCorrect?'':'retry'}" role="status"><strong>${session.wasCorrect?'Richtig! Gut gemacht. ✨':'Gut versucht! Hier ist die Lösung.'}</strong><p><b>${escapeHtml(w.en)}</b> bedeutet <b>${escapeHtml(w.de)}</b>.</p><p class="example">${escapeHtml(w.sentence)}<br><span class="muted">${escapeHtml(w.translation)}</span></p><button class="listen-example" data-action="speak-sentence" ${!canListen()?'disabled':''}>🔊 Beispielsatz anhören</button></div>
+    ${session.answered?`<div class="feedback ${session.wasCorrect?'':'retry'}" role="status"><strong>${session.wasCorrect?'Richtig! Gut gemacht. ✨':'Gut versucht! Hier ist die Lösung.'}</strong><p><b>${escapeHtml(w.en)}</b> bedeutet <b>${escapeHtml(w.de)}</b>.</p>${w.sentence?`<p class="example">${escapeHtml(w.sentence)}<br><span class="muted">${escapeHtml(w.translation)}</span></p><button class="listen-example" data-action="speak-sentence" ${!canListen()?'disabled':''}>🔊 Beispielsatz anhören</button>`:''}${w.book?`<p class="note">Aus deiner Buch-Wortliste · Seite ${w.page}. Die Kurzantwort kann weitere Bedeutungen haben.</p>`:''}</div>
       <button class="btn" data-action="next">${session.index===session.words.length-1?'Runde abschließen':'Weiter'}</button>`:''}`;
 }
 function activityQuiz(){
@@ -228,6 +243,24 @@ async function importData(file){
     data=normalize(parsed.data);save();nav('progress');alert(storageOk?'Lernstand wurde wiederhergestellt.':'Der Lernstand konnte nicht dauerhaft gespeichert werden.');
   }catch{alert('Die Datei ist keine gültige LingoLumi-Sicherung. Es wurde nichts geändert.')}finally{const input=document.getElementById('import');if(input)input.value=''}
 }
+async function importBookData(file){
+  if(!file)return;
+  try {
+    if(file.size>300000)throw new Error('zu groß');
+    const payload=JSON.parse(await file.text());
+    const legalTopics=new Set(UNITS.map(u=>u[0]));
+    if(payload.format!==1||payload.isbn!=='9783060345472'||!Array.isArray(payload.words)||payload.words.length<100||payload.words.length>1000)throw new Error('falsches Format');
+    const unique=new Set();
+    const cleaned=payload.words.map(w=>{
+      if(!w||!Number.isInteger(w.id)||w.id<3000||w.id>3999||!Number.isInteger(w.page)||w.page<214||w.page>253||!legalTopics.has(w.topic)||typeof w.en!=='string'||typeof w.de!=='string'||!w.en.trim()||!w.de.trim()||w.en.length>90||w.de.length>160)throw new Error('ungültige Karte');
+      const identity=w.topic+'|'+w.en.toLowerCase();if(unique.has(identity))throw new Error('doppelte Karte');unique.add(identity);
+      return {id:w.id,topic:w.topic,page:w.page,en:w.en,de:w.de,sentence:'',translation:'',book:true};
+    });
+    localStorage.setItem(BOOK_STORAGE,JSON.stringify({format:1,words:cleaned}));
+    // Neu laden: beide Datenbestände werden von Anfang an korrekt aufgebaut.
+    location.reload();
+  }catch(e){alert('Die private Buch-Wortliste konnte nicht importiert werden. Bitte wähle die Datei LingoLumi-Schulbuch-Wortliste-PRIVAT.json. Dein Lernstand bleibt erhalten.');}
+}
 document.addEventListener('click',event=>{
   const el=event.target.closest('[data-action],[data-route],[data-topic],[data-answer]');if(!el)return;
   if(el.dataset.route){nav(el.dataset.route);return}
@@ -236,7 +269,7 @@ document.addEventListener('click',event=>{
   switch(el.dataset.action){
     case 'start':start();break;
     case 'speak':if(session)speak(session.words[session.index].en);break;
-    case 'speak-sentence':if(session&&!session.words[session.index].kind)speak(session.words[session.index].sentence);break;
+    case 'speak-sentence':if(session&&!session.words[session.index].kind&&session.words[session.index].sentence)speak(session.words[session.index].sentence);break;
     case 'speak-story':if(session&&session.kind==='reading')speak(session.words[session.index].story);break;
     case 'test-audio':speak('Hello! Let us learn English together.');break;
     case 'read-instead':if(session&&!session.answered){session.kind='enToDe';session.options=makeOptions(session.words[session.index],'enToDe');render()}break;
@@ -250,7 +283,7 @@ document.addEventListener('click',event=>{
   }
 });
 soundButton.addEventListener('click',()=>{if(!audioSupported){alert('Auf diesem Gerät ist keine Sprachausgabe verfügbar.');return}data.sound=!data.sound;save();render()});
-document.addEventListener('change',e=>{if(e.target.id==='audio'){data.sound=e.target.checked;save();render()}if(e.target.id==='import'){importData(e.target.files?.[0])}});
+document.addEventListener('change',e=>{if(e.target.id==='audio'){data.sound=e.target.checked;save();render()}if(e.target.id==='import'){importData(e.target.files?.[0])}if(e.target.id==='book-import'){importBookData(e.target.files?.[0])}});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='spell'&&session&&!session.answered){e.preventDefault();check(e.target.value)}});
 if('serviceWorker'in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 render();
