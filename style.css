@@ -7,3 +7,6 @@ main{flex:1;padding:6px 20px 30px;min-width:0}.eyebrow{font-size:12px;color:var(
 
 /* Lighthouse-oriented curriculum */
 .book-banner{background:#e8e3ff;border:1px solid #d7caff;border-radius:20px;padding:14px 17px;margin:0 0 14px;display:grid;gap:4px}.book-banner b{color:#412897;font-size:15px}.book-banner span{font-size:12px}.book-banner small{color:#635b79;font-size:11px}.reading{background:#f0edff;border:1px solid #dfd6f8;border-radius:19px;padding:16px;margin:15px 0}.reading p{line-height:1.75;font-size:17px;margin:0;white-space:pre-line}.reading .speak{margin:14px 0 0}.activity-question{font-size:22px;font-weight:800;line-height:1.4;margin:15px 0 8px;overflow-wrap:anywhere}.topic b{line-height:1.3}.topic small{display:block;margin-top:6px;line-height:1.35}.topic.selected{padding:14px}
+
+/* Stimme: gut bedienbare Auswahl auf dem iPhone 12 mini */
+.field-label{display:block;font-size:14px;font-weight:800;margin:16px 0 6px}.voice-select{display:block;width:100%;min-height:50px;border:2px solid #dcd2f2;border-radius:14px;background:#fff;color:var(--ink);padding:10px 12px;font:inherit;font-size:16px}.voice-select:focus{border-color:var(--purple);outline:2px solid #bcb0ea}.voice-select:disabled{opacity:.5}

@@ -1,4 +1,6 @@
-LingoLumi 4.0 – privater Schulbuchwortschatz, öffentliche Gratis-App
+LingoLumi 4.1 – Verbesserte englische Sprachausgabe
+
+Update der GitHub-Pages-App mit privatem Schulbuchwortschatz
 
 Schulbuch: Lighthouse General Edition Band 1, ISBN 978-3-06-034547-2.
 Zwei Ausgaben: Ein öffentliches App-Paket ohne Schulbuchdaten und eine
@@ -27,3 +29,15 @@ vollständig mit dem Druckwerk gegengelesen; bei Abweichungen gilt das Buch.
 
 Kosten: 0 EUR. Keine Werbung, kein Konto, kein KI-Server.
 Keine offizielle Cornelsen-App. Apple Intelligence benötigt ein neueres iPhone.
+
+NEU: Unter „Mehr“ -> „Englische Stimme“ lassen sich bei Verfügbarkeit
+eine englische iPhone-Stimme und vier Sprechgeschwindigkeiten wählen.
+Die App bevorzugt sonst eine lokal vorhandene englisch-britische Stimme.
+In Vokabelübungen gibt es „Langsam anhören“.
+
+ACHTUNG: Die Stimmen, die iOS Safari/Web-Apps bereitstellt, können von
+den in den Systemeinstellungen installierten Stimmen abweichen. Keine
+Garantie auf Siri/Apple-Intelligence-Stimmen oder perfekte Natürlichkeit.
+
+Die 715 privaten Buchkarten gehören weiterhin NICHT nach GitHub.
+Beim Update bleiben App-Speicher und gelernte Wörter unverändert.

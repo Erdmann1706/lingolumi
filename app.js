@@ -22,7 +22,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
 const localDate=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const plusDays=(days)=>{let d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+days);return localDate(d)};
-const fresh=()=>({name:'',sound:true,topic:'Hello!',courseVersion:4,items:{},activities:{},history:[],sessions:0,created:localDate()});
+const fresh=()=>({name:'',sound:true,voiceChoice:'auto',speechRate:0.85,topic:'Hello!',courseVersion:4,items:{},activities:{},history:[],sessions:0,created:localDate()});
 const validDate=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)?x:'';
 const validTopic=x=>x==='Alle'||TOPICS.some(t=>t[0]===x)?x:'Hello!';
 const cleanNumber=(x,min,max)=>Number.isFinite(x)?clamp(Math.floor(x),min,max):min;
@@ -31,6 +31,8 @@ function normalize(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return result;
   result.name=typeof raw.name==='string'?raw.name.slice(0,22):'';
   result.sound=raw.sound!==false;
+  result.voiceChoice=typeof raw.voiceChoice==='string'&&raw.voiceChoice.length<=220?raw.voiceChoice:'auto';
+  result.speechRate=[0.72,0.85,1,1.12].includes(raw.speechRate)?raw.speechRate:0.85;
   result.topic=Number(raw.courseVersion)>=3?validTopic(raw.topic):'Hello!';
   result.sessions=cleanNumber(raw.sessions,0,100000);
   result.created=validDate(raw.created)||localDate();
@@ -71,19 +73,44 @@ function dueCount(){return topicWords(data.topic).filter(isDue).length+topicActi
 const percentage=(a,b)=>b?Math.round(a/b*100):0;
 function stats(){const ws=BOOK_WORDS.length?BOOK_WORDS:COURSE_WORDS;return {learned:ws.filter(w=>item(w).tries>0).length,mastered:ws.filter(mastered).length,total:ws.length,exercises:COURSE_ACTIVITIES.filter(a=>activityItem(a).tries>0).length}}
 const audioSupported='speechSynthesis'in window&&'SpeechSynthesisUtterance'in window;
-function speak(text){
+function englishVoices(){
+  if(!audioSupported)return [];
+  try{return window.speechSynthesis.getVoices().filter(v=>/^en(?:-|$)/i.test(v.lang)).sort((a,b)=>{
+    const rank=v=>String(v.lang).toLowerCase()==='en-gb'?0:String(v.lang).toLowerCase()==='en-us'?1:2;
+    return rank(a)-rank(b)||Number(b.localService)-Number(a.localService)||a.name.localeCompare(b.name);
+  })}catch{return []}
+}
+function voiceKey(v){return v.voiceURI+'|'+v.lang}
+function preferredVoice(){
+  const voices=englishVoices();
+  if(data.voiceChoice!=='auto'){
+    const selected=voices.find(v=>voiceKey(v)===data.voiceChoice);
+    if(selected)return selected;
+  }
+  return voices.find(v=>v.lang.toLowerCase()==='en-gb'&&v.localService)
+    ||voices.find(v=>v.lang.toLowerCase()==='en-gb')
+    ||voices.find(v=>v.localService)||voices[0]||null;
+}
+// Ausschließlich die installierten Systemstimmen des Geräts, keine Web-API- oder Cloud-KI-Anfragen.
+function speak(text,slow=false){
   if(!data.sound||!audioSupported)return false;
   try{
     window.speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);
-    u.lang='en-GB';u.rate=.82;u.pitch=1;
-    const voices=window.speechSynthesis.getVoices();
-    u.voice=voices.find(v=>v.lang.toLowerCase()==='en-gb')||voices.find(v=>v.lang.toLowerCase().startsWith('en'))||null;
+    const voice=preferredVoice();
+    if(voice){u.voice=voice;u.lang=voice.lang}else u.lang='en-GB';
+    u.rate=slow?Math.min(data.speechRate,0.72):data.speechRate;
+    u.pitch=1;u.volume=1;
     window.speechSynthesis.speak(u);
     return true;
   }catch{return false}
 }
 function canListen(){return audioSupported&&data.sound}
+function voiceChoices(){
+  const voices=englishVoices();
+  return `<option value="auto" ${data.voiceChoice==='auto'?'selected':''}>Automatisch · britisches Englisch</option>`+
+    voices.map(v=>`<option value="${escapeHtml(voiceKey(v))}" ${data.voiceChoice===voiceKey(v)?'selected':''}>${escapeHtml(v.name)} · ${escapeHtml(v.lang)}${v.localService?' · auf dem Gerät':''}</option>`).join('');
+}
 function nav(next){window.speechSynthesis?.cancel?.();route=next;session=null;render();window.scrollTo(0,0)}
 function render(){
   document.querySelectorAll('.navbtn').forEach(b=>{b.classList.toggle('active',b.dataset.route===route);if(b.dataset.route===route)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
@@ -120,7 +147,12 @@ function progress(){
 function settings(){
   return `<div class="eyebrow">Dein Lernbegleiter</div><h1>Meine Einstellungen</h1>
     <div class="card"><label for="name"><b>Wie darf ich dich nennen?</b></label><p class="muted">Am besten nur ein Spitzname. Bleibt auf diesem Gerät.</p><input id="name" class="textinput" maxlength="22" placeholder="Dein Spitzname" value="${escapeHtml(data.name)}"><button class="btn secondary" style="margin-top:12px" data-action="name">Namen speichern</button></div>
-    <div class="card"><label class="opt"><input id="audio" type="checkbox" ${data.sound?'checked':''} ${!audioSupported?'disabled':''}><span><b>Englisch vorlesen</b><span class="muted" style="display:block">Benutzt die Sprachausgabe des iPhones.</span></span></label><button class="btn tertiary" data-action="test-audio" ${!canListen()?'disabled':''}>Stimme ausprobieren</button><p class="note">${audioSupported?'Falls du nichts hörst, prüfe die Lautstärke. In Hörfragen kannst du jederzeit zur Leseaufgabe wechseln.':'Diese Browserumgebung unterstützt keine Sprachausgabe. Die App bietet dann nur Lese- und Schreibaufgaben.'}</p></div>
+    <div class="card"><h3>Englische Stimme</h3><label class="opt"><input id="audio" type="checkbox" ${data.sound?'checked':''} ${!audioSupported?'disabled':''}><span><b>Englisch vorlesen</b><span class="muted" style="display:block">Benutzt die Systemstimmen des iPhones.</span></span></label>
+      <label class="field-label" for="voice-choice">Stimme auswählen</label><select id="voice-choice" class="voice-select" ${!audioSupported?'disabled':''}>${voiceChoices()}</select>
+      <p class="note">${englishVoices().length?`${englishVoices().length} englische Stimme(n) verfügbar. Wähle die angenehmste aus.`:'Wenn keine Stimmen angezeigt werden, versucht LingoLumi automatisch eine englische Systemstimme.'} Nicht jede iPhone-Stimme ist für Web-Apps auswählbar.</p>
+      <label class="field-label" for="speech-rate">Sprechtempo</label><select id="speech-rate" class="voice-select" ${!audioSupported?'disabled':''}>${[[0.72,'Ruhig · langsam'],[0.85,'Lerntempo · empfohlen'],[1,'Normal'],[1.12,'Etwas schneller']].map(([n,label])=>`<option value="${n}" ${data.speechRate===n?'selected':''}>${label}</option>`).join('')}</select>
+      <button class="btn tertiary" style="margin-top:12px" data-action="test-audio" ${!canListen()?'disabled':''}>Stimme ausprobieren</button><button class="btn secondary" style="margin-top:10px" data-action="refresh-voices" ${!audioSupported?'disabled':''}>Stimmen neu laden</button>
+      <p class="note">${audioSupported?'In Hörübungen kannst du jedes Wort zusätzlich langsam anhören. Hörst du nichts, prüfe die Lautstärke.':'Diese Browserumgebung unterstützt keine Sprachausgabe. Die App bietet dann nur Lese- und Schreibaufgaben.'}</p></div>
     <div class="card"><h3>Datenschutz & Lernstand</h3><p class="muted">Keine Anmeldung, Werbung oder Nachverfolgung. Antworten und Fortschritte bleiben lokal in dieser Web-App.</p><p class="note">Safari und die installierte Home-Bildschirm-App können getrennte Speicher verwenden. Der Lernstand wird nicht automatisch übertragen. Das Löschen der App oder ihrer Daten kann den Lernstand entfernen.</p>${!storageOk?storageWarning():''}
     <button class="btn tertiary" data-action="export">Lernstand sichern</button><label for="import" class="btn secondary file-label">Sicherung wiederherstellen</label><input id="import" type="file" accept=".json,application/json" class="visually-hidden"><p class="note">Eine Sicherung ist eine JSON-Datei. Sie kann später hier wieder eingelesen werden.</p></div>
     <div class="card"><h3>Schulbuch-Wortliste</h3><p class="muted">${BOOK_WORDS.length?`${BOOK_WORDS.length} Wörter aus den fotografierten Buchseiten sind auf diesem iPhone gespeichert.`:'Noch keine private Buch-Wortliste geladen. Bis zum Import nutzt LingoLumi die bisherigen allgemeinen Übungen.'}</p><label for="book-import" class="btn secondary file-label">${BOOK_WORDS.length?'Wortliste erneut importieren':'Private Wortliste importieren'}</label><input id="book-import" type="file" accept=".json,application/json" class="visually-hidden"><p class="note">Die Wortliste bleibt ausschließlich in dieser installierten App. Lade sie nicht in dein öffentliches GitHub-Repository hoch. Bewahre die private JSON-Datei für eine spätere Neuinstallation auf.</p></div>
@@ -184,12 +216,12 @@ function quiz(){
   const showSpeak=canListen()&&(kind==='listen'||kind==='enToDe');
   return `<div class="qtop"><button class="iconbtn" data-action="exit" aria-label="Runde verlassen">✕</button><div class="meter" role="progressbar" aria-label="Rundenfortschritt" aria-valuenow="${session.index+1}" aria-valuemin="0" aria-valuemax="${session.words.length}"><div class="fill" style="width:${session.index/session.words.length*100}%"></div></div><span class="pill">${session.index+1}/${session.words.length}</span></div>
     ${w.book?`<div class="eyebrow">Lighthouse · ${escapeHtml(w.topic)} · Buchseite ${w.page}</div>`:''}<div class="question"><div class="prompt">${prompt}</div><div class="word">${escapeHtml(questionWord)}</div>
-    ${showSpeak?`<button class="speak" data-action="speak" aria-label="Englisches Wort anhören">🔊 <span>Wort anhören</span></button>`:''}
+    ${showSpeak?`<button class="speak" data-action="speak" aria-label="Englisches Wort anhören">🔊 <span>Wort anhören</span></button><button class="linkbtn" data-action="speak-slow">🐢 Langsam anhören</button>`:''}
     ${kind==='listen'?'<p class="sub">Du kannst es so oft anhören, wie du möchtest.</p><button class="linkbtn" data-action="read-instead">Ich kann nichts hören – lieber lesen</button>':kind==='spell'?'<p class="sub">Schreibe das englische Wort. Groß- und Kleinschreibung ist egal.</p>':''}
     </div>
     ${kind==='spell'?`<div class="card"><label for="spell" class="visually-hidden">Deine englische Antwort</label><input class="textinput spell" id="spell" type="text" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Englisches Wort" ${session.answered?'disabled':''}><button class="btn" style="margin-top:12px" data-action="check" ${session.answered?'disabled':''}>Antwort prüfen</button></div>`:
       `<div class="answers">${session.options.map(o=>`<button class="answer ${session.answered?(o.id===w.id?'correct':o.id===session.selectedId?'wrong':''):''}" data-answer="${o.id}" ${session.answered?'disabled':''}>${escapeHtml(o.label)}</button>`).join('')}</div>`}
-    ${session.answered?`<div class="feedback ${session.wasCorrect?'':'retry'}" role="status"><strong>${session.wasCorrect?'Richtig! Gut gemacht. ✨':'Gut versucht! Hier ist die Lösung.'}</strong><p><b>${escapeHtml(w.en)}</b> bedeutet <b>${escapeHtml(w.de)}</b>.</p>${w.sentence?`<p class="example">${escapeHtml(w.sentence)}<br><span class="muted">${escapeHtml(w.translation)}</span></p><button class="listen-example" data-action="speak-sentence" ${!canListen()?'disabled':''}>🔊 Beispielsatz anhören</button>`:''}${w.book?`<p class="note">Aus deiner Buch-Wortliste · Seite ${w.page}. Die Kurzantwort kann weitere Bedeutungen haben.</p>`:''}</div>
+    ${session.answered?`<div class="feedback ${session.wasCorrect?'':'retry'}" role="status"><strong>${session.wasCorrect?'Richtig! Gut gemacht. ✨':'Gut versucht! Hier ist die Lösung.'}</strong><p><b>${escapeHtml(w.en)}</b> bedeutet <b>${escapeHtml(w.de)}</b>.</p>${canListen()?`<button class="listen-example" data-action="speak-slow">🔊 Wort langsam wiederholen</button>`:''}${w.sentence?`<p class="example">${escapeHtml(w.sentence)}<br><span class="muted">${escapeHtml(w.translation)}</span></p><button class="listen-example" data-action="speak-sentence" ${!canListen()?'disabled':''}>🔊 Beispielsatz anhören</button>`:''}${w.book?`<p class="note">Aus deiner Buch-Wortliste · Seite ${w.page}. Die Kurzantwort kann weitere Bedeutungen haben.</p>`:''}</div>
       <button class="btn" data-action="next">${session.index===session.words.length-1?'Runde abschließen':'Weiter'}</button>`:''}`;
 }
 function activityQuiz(){
@@ -269,9 +301,11 @@ document.addEventListener('click',event=>{
   switch(el.dataset.action){
     case 'start':start();break;
     case 'speak':if(session)speak(session.words[session.index].en);break;
+    case 'speak-slow':if(session&&!session.words[session.index].kind)speak(session.words[session.index].en,true);break;
     case 'speak-sentence':if(session&&!session.words[session.index].kind&&session.words[session.index].sentence)speak(session.words[session.index].sentence);break;
     case 'speak-story':if(session&&session.kind==='reading')speak(session.words[session.index].story);break;
-    case 'test-audio':speak('Hello! Let us learn English together.');break;
+    case 'test-audio':speak('Hello! Let us learn English together. Take your time, and have fun!');break;
+    case 'refresh-voices':render();break;
     case 'read-instead':if(session&&!session.answered){session.kind='enToDe';session.options=makeOptions(session.words[session.index],'enToDe');render()}break;
     case 'check':check(document.getElementById('spell')?.value||'');break;
     case 'next':next();break;
@@ -283,7 +317,16 @@ document.addEventListener('click',event=>{
   }
 });
 soundButton.addEventListener('click',()=>{if(!audioSupported){alert('Auf diesem Gerät ist keine Sprachausgabe verfügbar.');return}data.sound=!data.sound;save();render()});
-document.addEventListener('change',e=>{if(e.target.id==='audio'){data.sound=e.target.checked;save();render()}if(e.target.id==='import'){importData(e.target.files?.[0])}if(e.target.id==='book-import'){importBookData(e.target.files?.[0])}});
+document.addEventListener('change',e=>{
+  if(e.target.id==='audio'){data.sound=e.target.checked;save();render()}
+  if(e.target.id==='voice-choice'){data.voiceChoice=e.target.value;save();}
+  if(e.target.id==='speech-rate'){data.speechRate=[0.72,0.85,1,1.12].includes(Number(e.target.value))?Number(e.target.value):0.85;save();}
+  if(e.target.id==='import'){importData(e.target.files?.[0])}
+  if(e.target.id==='book-import'){importBookData(e.target.files?.[0])}
+});
+if(audioSupported&&typeof window.speechSynthesis.addEventListener==='function'){
+  window.speechSynthesis.addEventListener('voiceschanged',()=>{if(route==='settings'&&document.activeElement?.id!=='voice-choice')render()});
+}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='spell'&&session&&!session.answered){e.preventDefault();check(e.target.value)}});
 if('serviceWorker'in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 render();
